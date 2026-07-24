@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template to create an EC2 instance, IAM user, and S3 bucket
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: EC2 instance type
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    ConstraintDescription: Must be a valid EC2 instance type.
+
+Resources:
+  # Criação do bucket S3
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: S3-FOUNDATION
+
+  # Criação do grupo IAM
+  IAMGroup:
+    Type: 'AWS::IAM::Group'
+    Properties:
+      GroupName: GPO-ADMIN-LAB
+
+  # Criação do usuário IAM
+  IAMUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: alexsandro.lechner
+      Groups:
+        - !Ref IAMGroup
+
+  # Criação da instância EC2
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap [UbuntuMap, !Ref "AWS::Region", UbuntuAMI]
+      KeyName: your-key-pair-name  # Substitua pelo seu nome de par de chaves
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt-get update
+          apt-get install -y python3-pip
+
+  # Criação do grupo de segurança para a instância EC2
+  EC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access
+      VpcId: vpc-040a4ffd0374c4cf3
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0  # Permitir acesso SSH de qualquer IP
+
+Mappings:
+  # Mapeamento para AMIs do Ubuntu
+  UbuntuMap:
+    us-east-1:
+      UbuntuAMI: ami-0c55b159cbfafe1f0  # Exemplo de AMI para Ubuntu 20.04 na região us-east-1
+    us-west-2:
+      UbuntuAMI: ami-0dba2cbf4e3c2e7b1  # Exemplo de AMI para Ubuntu 20.04 na região us-west-2
+
+Outputs:
+  InstanceId:
+    Description: The Instance ID
+    Value: !Ref EC2Instance
+  S3BucketName:
+    Description: The name of the S3 bucket
+    Value: !Ref S3Bucket
+  IAMUserName:
+    Description: The IAM User Name
+    Value: !Ref IAMUser
