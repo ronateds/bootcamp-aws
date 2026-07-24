@@ -4,11 +4,11 @@
 Aplicar os conhecimentos das aulas sobre [AWS Step Functions](https://aws.amazon.com/pt/step-functions/) e documentar no GitHub.
 
 ### Resolução
-Para fazer o desafio eu criei um Step Function simples que faz um GET request para [API Via CEP](https://viacep.com.br/), passado o CEP `01001000` e então guardando o resultado em um arquivo JSON em um S3 bucket.
+Para fazer o desafio eu criei um Step Function simples que faz um GET request para a [API ViaCEP](https://viacep.com.br/), passado o CEP `01001000` e então guardando o resultado em um arquivo JSON em um S3 bucket.
 
 ![step functions](images/step-functions.png)
 
-Foi um pouco desafiador fazer minha primeira Step Function, mas com algumas interações e com ajuda da ferramenta do Amazon Q eu consegui fazer com que funcionasse como desejado.
+Foi um pouco desafiador fazer minha primeira Step Function, mas com algumas interações e com a ajuda da ferramenta Amazon Q eu consegui fazer com que funcionasse como desejado.
 
 ![execuções](images/executions.png)
 
