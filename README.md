@@ -19,5 +19,3 @@ As seguintes Organizational Units (OUs) foram criadas.
 ![ous](images/OUs.png)
 
 A unica diferença do artigo foi que seria criado uma conta dentro da OU Production, mas eu já tinha atingido o limite de contas das AWS e não foi possível criar uma conta para esse exemplo.
-
-![desafio-1](./images/desafio%20-%201.png)
