@@ -1,8 +1,23 @@
 # bootcamp-aws
 
-## 1º Desafio
-Elaborar e desenhar a arquitetura de um sistema na AWS utilizando o draw.io, praticando os conceitos que foram abordados até o momento no bootcamp.
+## 4º Desafio
+Implementar uma infraestrutura automatizada com AWS CloudFormation.
 
-O sistema apresentado representa o fluxo de uma API REST que está hospedado em uma EC2 na AWS Cloud, a EC2 se comunica com um banco de dados e com uma EBS que terá snapshots regulares guardados em um S3 bucket.
+Para esse desafio vou usar o Cloudfront para automatizar a criação de recursos no AWS Organizations.
+Para isso vou seguir esse [artigo](https://aws.amazon.com/blogs/security/deploy-aws-organizations-resources-by-using-cloudformation/).
+
+Inicialmente é necessário criar um novo role para o Cloudformation usando a seguinte [permission policy](./files/permissions-policy.json) e [trust policy](./files/trust-policy.json).
+
+Na AWS Organizations foi preciso habilitar Tag Policies e Service control policies.
+
+Após alguns erros e com a ajuda do Amazon Q eu consegui criar a stack com sucesso.
+
+![stack sucesso](images/stack-sucessso.png)
+
+As seguintes Organizational Units (OUs) foram criadas.
+
+![ous](images/OUs.png)
+
+A unica diferença do artigo foi que seria criado uma conta dentro da OU Production, mas eu já tinha atingido o limite de contas das AWS e não foi possível criar uma conta para esse exemplo.
 
 ![desafio-1](./images/desafio%20-%201.png)

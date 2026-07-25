@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AWS Organizations using Cloudformation - Creates OU, nested OU, account and organizations policies"
+
+Parameters:
+  OrganizationRoot:
+    Description: 'Organization ID'
+    Type: String
+
+Resources:
+  InfrastructureOU:
+      Type: AWS::Organizations::OrganizationalUnit
+      Properties:
+          Name: Infrastructure
+          ParentId: !Ref OrganizationRoot
+
+  SecurityOU:
+      Type: AWS::Organizations::OrganizationalUnit
+      Properties:
+          Name: Security
+          ParentId: !Ref OrganizationRoot
+
+  ProductionOU:
+      Type: AWS::Organizations::OrganizationalUnit
+      Properties:
+          Name: Production
+          ParentId: { "Ref" : "InfrastructureOU" }
+      DependsOn: InfrastructureOU
+
+  AccountB:
+      Type: AWS::Organizations::Account
+      Properties:
+          AccountName: AccountB
+          Email: your-unique-email+account-b@yourdomain.com
+          ParentIds: [{"Ref": "ProductionOU"}]
+
+  PreventLeavingOrganizationSCP:
+      Type: AWS::Organizations::Policy
+      Properties:
+          TargetIds: [{"Ref": "OrganizationRoot"}]
+          Name: PreventLeavingOrganization
+          Description: Prevent member accounts from leaving the organization
+          Type: SERVICE_CONTROL_POLICY
+          Content: >-
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Deny",
+                        "Action": [
+                            "organizations:LeaveOrganization"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+          Tags:
+            - Key: DoNotDelete
+              Value: True
+
+  PreventCloudTrailDisablementSCP:
+      Type: AWS::Organizations::Policy
+      Properties:
+          TargetIds: [{"Ref": "SecurityOU"}]
+          Name: PreventCloudTrailDisablement
+          Description: Prevent users from disabling CloudTrail or altering its configuration
+          Type: SERVICE_CONTROL_POLICY
+          Content: >-
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Deny",
+                  "Action": [
+                    "cloudtrail:DeleteTrail",
+                    "cloudtrail:PutEventSelectors",
+                    "cloudtrail:StopLogging",
+                    "cloudtrail:UpdateTrail"
+
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+
+  TagPolicy:
+      Type: AWS::Organizations::Policy
+      Properties:
+          TargetIds: [{"Ref": "ProductionOU"}]
+          Name: DefineTagKeyCase
+          Description: CostCenter tag should comply with case specified in the policy
+          Type: TAG_POLICY
+          Content: >-
+            {
+                "tags": {
+                  "CostCenter": {
+                      "tag_key": {
+                        "@@assign": "CostCenter",
+                        "@@operators_allowed_for_child_policies": ["@@none"]
+                        }
+                      }
+                    }
+            }

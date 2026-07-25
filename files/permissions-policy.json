@@ -1,0 +1,60 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ReadOnlyPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "organizations:Describe*",
+                "organizations:List*",
+                "account:GetContactInformation",
+                "account:GetAlternateContact"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowCreationOfResources",
+            "Effect": "Allow",
+            "Action": [
+                "organizations:CreateAccount",
+                "organizations:CreateOrganizationalUnit",
+                "organizations:CreatePolicy"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowModificationOfResources",
+            "Effect": "Allow",
+            "Action": [
+                "organizations:UpdateOrganizationalUnit",
+                "organizations:AttachPolicy",
+                "organizations:TagResource",
+                "account:PutContactInformation"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowDeletionOfResources",
+            "Effect": "Allow",
+            "Action": [
+                "organizations:DeleteOrganizationalUnit",
+                "organizations:DeletePolicy",
+                "organizations:DetachPolicy",
+                "organizations:EnablePolicyType",
+                "organizations:UntagResource"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowAccountManagement",
+            "Effect": "Allow",
+            "Action": [
+                "organizations:CreateAccount",
+                "organizations:CloseAccount",
+                "organizations:DescribeCreateAccountStatus",
+                "organizations:MoveAccount"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
