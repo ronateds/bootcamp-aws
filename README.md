@@ -8,7 +8,7 @@ São 5 desafios, cada um resolvido em uma branch desse repositório.
 Elaborar e desenhar a arquitetura de um sistema na AWS utilizando o draw.io.
 
 ## [2º Desafio](https://github.com/ronateds/bootcamp-aws/tree/desafio-02-step-functions)
-Criar uma Step Function
+Criar uma Step Function.
 
 ## [3º Desafio](https://github.com/ronateds/bootcamp-aws/tree/desafio-03-cloudformation)
 Implementar uma Stack com o AWS CloudFormation.
