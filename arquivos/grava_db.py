@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 import logging
+import urllib.parse
 from decimal import Decimal
 from datetime import datetime
 
@@ -32,16 +33,21 @@ def validar_registro(registro):
     if campos_faltando:
         return False, f"Campos obrigatórios faltando: {campos_faltando}"
 
-    if not isinstance(regitro["id"], str):
-        return False, f"O campo 'id' deve ser uma string."
-    if not isinstance(regitro["cliente"], str):
-        return False, f"O campo 'cliente' deve ser uma string."
-    if not isinstance(regitro["valor"], (int, float, Decimal)):
-        return False, f"O campo 'valor' deve ser numérico."
-    if not isinstance(regitro["data_emissao"], str):
-        return False, f"O campo 'data_emissao' deve ser uma string no formato de data."
+    if not isinstance(registro["id"], str):
+        return False, "O campo 'id' deve ser uma string."
+    if not isinstance(registro["cliente"], str):
+        return False, "O campo 'cliente' deve ser uma string."
+    if not isinstance(registro["valor"], (int, float, Decimal)):
+        return False, "O campo 'valor' deve ser numérico."
+    if not isinstance(registro["data_emissao"], str):
+        return False, "O campo 'data_emissao' deve ser uma string no formato de data."
 
-    return True, "REgistro válido"
+    try:
+        datetime.strptime(registro["data_emissao"], "%Y-%m-%d")
+    except ValueError:
+        return False, "O campo 'data_emissao' deve estar no formato YYYY-MM-DD."
+
+    return True, "Registro válido"
 
 
 # Função para mover o arquivo dentro do S3
@@ -54,58 +60,86 @@ def mover_arquivo_s3(s3, bucket, key, destino):
 
         # Copiar e deletar o arquivo original
         s3.copy_object(Bucket=bucket, CopySource={'Bucket': bucket, 'Key': key}, Key=novo_key)
+        s3.delete_object(Bucket=bucket, Key=key)
+        logger.info(f"Arquivo original deletado do S3: s3://{bucket}/{key}")
     except Exception as e:
         logger.error(f"Erro ao mover o arquivo no S3: {str(e)}")
 
 
+# Helper para serializar Decimal em respostas JSON
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
+
+
 # Função Principal do Lambda
 def lambda_handler(event, context):
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', endpoint_url=dynamo_endpoint)
 
-    for record in event.get('Records', []):
-        s3_bucket = record['s3']['bucket']['name']
-        s3_key = record['s3']['object']['key']
-        logger.info(f"Processando arquivo: s3://{s3_bucket}/{s3_key}")
+    # 1) Processamento de eventos do S3
+    if 'Records' in event and len(event['Records']) > 0 and 's3' in event['Records'][0]:
+        for record in event.get('Records', []):
+            s3_bucket = record['s3']['bucket']['name']
+            s3_key = urllib.parse.unquote_plus(record['s3']['object']['key'], encoding='utf-8')
+            logger.info(f"Processando arquivo: s3://{s3_bucket}/{s3_key}")
 
-    try:
-        # Ler o arquivo do S3
-        response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
-        file_content = response['Body'].read().decode('utf-8')
-
-        # Carregar o conteúdo como JSON
-        try:
-            registros = json.loads(file_content, parse_float=Decimal)
-            logger.info(f"Arquivo JSON carregado com sucesso. Total de registros: {len(registros)}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Erro ao decodificar o JSON: {str(e)}")
-            mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-            continue
-
-        # Processar cada registro
-        for registro in registros:
-            valido, mensagem = validar_registro(registro)
-            if not valido:
-                logger.warning(f"Registro inválido: {mensagem}")
+            # Evitar loop de gatilho ao mover arquivos para pastas de "sucesso/" ou "erro/"
+            if s3_key.startswith("sucesso/") or s3_key.startswith("erro/"):
+                logger.info(f"Arquivo '{s3_key}' já processado na pasta de destino, ignorando.")
                 continue
 
             try:
-                logger.info(f"Inserindo registro no DynamoDB: {registro}")
-                table.put_item(Item=registro)
-                logger.info("Registro inserido com sucesso!")
+                # Ler o arquivo do S3
+                response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+                file_content = response['Body'].read().decode('utf-8')
+
+                # Carregar o conteúdo como JSON
+                try:
+                    registros = json.loads(file_content, parse_float=Decimal)
+                    if isinstance(registros, dict):
+                        registros = [registros]
+                    logger.info(f"Arquivo JSON carregado com sucesso. Total de registros: {len(registros)}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Erro ao decodificar o JSON: {str(e)}")
+                    mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
+                    continue
+
+                # Processar cada registro
+                erro_no_processamento = False
+                for registro in registros:
+                    valido, mensagem = validar_registro(registro)
+                    if not valido:
+                        logger.warning(f"Registro inválido: {mensagem}")
+                        erro_no_processamento = True
+                        break
+
+                    try:
+                        logger.info(f"Inserindo registro no DynamoDB: {registro}")
+                        table.put_item(Item=registro)
+                        logger.info("Registro inserido com sucesso!")
+                    except Exception as e:
+                        logger.error(f"Erro ao inserir registro no DynamoDB: {str(e)}")
+                        erro_no_processamento = True
+                        break
+
+                # Mover arquivo para pasta apropriada no S3
+                if erro_no_processamento:
+                    mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
+                else:
+                    mover_arquivo_s3(s3, s3_bucket, s3_key, "sucesso")
+
             except Exception as e:
-                logger.error(f"Erro ao inserir registro no DynamoDB: {str(e)}")
+                logger.error(f"Erro inesperado ao processar o arquivo: {str(e)}")
                 mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-                break
 
-        # Mover arquivo para pasta de sucesso após processamento completo
-        else:
-            mover_arquivo_s3(s3, s3_bucket, s3_key, "sucesso")
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Processamento S3 concluído com sucesso!')
+        }
 
-    except Exception as e:
-        logger.error(f"Erro inesperado ao processar o arquivo: {str(e)}")
-        mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-
-return {
-    'statusCode': 200,
-    'body': json.dumps('Processamento concluído com sucesso!')
-}
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Processamento concluído com sucesso!')
+    }
