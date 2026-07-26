@@ -1,0 +1,82 @@
+Ótimo! Agora sabemos que o recurso `/notas` já está configurado com o método **POST**, mas o **GET** ainda não foi adicionado. Vou te orientar sobre como configurar o método **GET** corretamente.
+
+---
+
+### **Passo 1: Adicionar o método GET ao recurso `/notas`**
+
+Execute o comando abaixo para adicionar o método **GET**:
+
+```bash
+aws apigateway put-method \
+    --rest-api-id ceq1hychea \
+    --resource-id x4tuejhjcx \
+    --http-method GET \
+    --authorization-type "NONE" \
+    --endpoint-url=http://localhost:4566
+```
+
+---
+
+### **Passo 2: Integrar o método GET com a Lambda**
+
+Agora, integre o método **GET** com a função Lambda `ProcessarNotasFiscais`:
+
+```bash
+aws apigateway put-integration \
+    --rest-api-id ceq1hychea \
+    --resource-id x4tuejhjcx \
+    --http-method GET \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" \
+    --endpoint-url=http://localhost:4566
+```
+
+---
+
+### **Passo 3: Conceder permissão à API para o método GET**
+
+Conceda permissão para que a API Gateway invoque a Lambda usando o método **GET**:
+
+```bash
+aws lambda add-permission \
+    --function-name ProcessarNotasFiscais \
+    --statement-id apigateway-access-get \
+    --action "lambda:InvokeFunction" \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:us-east-1:000000000000:ceq1hychea/*/GET/notas" \
+    --endpoint-url=http://localhost:4566
+```
+
+---
+
+### **Passo 4: Implementar as mudanças na API**
+
+Crie um novo deployment para aplicar as mudanças:
+
+```bash
+aws apigateway create-deployment \
+    --rest-api-id ceq1hychea \
+    --stage-name dev \
+    --endpoint-url=http://localhost:4566
+```
+
+---
+
+### **Passo 5: Testar o método GET**
+
+Agora, teste o método **GET**:
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:4566/restapis/ceq1hychea/dev/_user_request_/notas" `
+                  -Method GET
+```
+
+---
+
+### **Verifique os logs:**  
+Se configurado corretamente, você verá a resposta da consulta no DynamoDB. Verifique os logs no Localstack com:
+
+```bash
+docker logs localstack
+```

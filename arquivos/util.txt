@@ -1,0 +1,40 @@
+aws s3api get-bucket-notification-configuration --bucket notas-fiscais-upload --endpoint-url=http://localhost:4566
+
+aws apigateway create-rest-api --name "NotasFiscaisAPI" --endpoint-url=http://localhost:4566
+
+aws apigateway get-resources --rest-api-id ceq1hychea --endpoint-url=http://localhost:4566
+
+
+Criado recurso Notas:
+ceq1hychea e ceq1hychea foram ids recuperados
+aws apigateway create-resource --rest-api-id ceq1hychea --parent-id 0mslybgceq --path-part "notas" --endpoint-url=http://localhost:4566
+
+aws apigateway put-method --rest-api-id ceq1hychea --resource-id x4tuejhjcx --http-method POST --authorization-type "NONE" --endpoint-url=http://localhost:4566
+
+aws apigateway put-integration --rest-api-id ceq1hychea --resource-id x4tuejhjcx --http-method POST --type AWS_PROXY --integration-http-method POST --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" --endpoint-url=http://localhost:4566
+
+
+aws lambda add-permission --function-name ProcessarNotasFiscais --statement-id apigateway-access --action "lambda:InvokeFunction" --principal apigateway.amazonaws.com --source-arn "arn:aws:execute-api:us-east-1:000000000000:ceq1hychea/*/POST/notas" --endpoint-url=http://localhost:4566
+
+aws apigateway create-deployment --rest-api-id ceq1hychea --stage-name dev --endpoint-url=http://localhost:4566
+
+curl -X POST http://localhost:4566/restapis/abc123/dev/_user_request_/notas -H "Content-Type: application/json" -d '{"id": "NF-999", "cliente": "João2 Silva", "valor": 1000.0, "data_emissao": "2025-01-31"}'
+
+
+Invoke-RestMethod -Uri "http://localhost:4566/restapis/ceq1hychea/dev/_user_request_/notas" -Method POST -ContentType "application/json" -Body '{"id": "NF-999", "cliente": "João2 Silva", "valor": 1000.0, "data_emissao": "2025-01-31"}'
+
+
+Invoke-RestMethod -Uri "http://localhost:4566/restapis/ceq1hychea/dev/_user_request_/notas" -Method GET
+
+aws apigateway get-resources --rest-api-id ceq1hychea --endpoint-url=http://localhost:4566
+
+aws apigateway put-method --rest-api-id ceq1hychea --resource-id x4tuejhjcx --http-method GET --authorization-type "NONE" --endpoint-url=http://localhost:4566
+
+aws apigateway put-integration --rest-api-id ceq1hychea --resource-id x4tuejhjcx --http-method GET --type AWS_PROXY --integration-http-method POST --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" --endpoint-url=http://localhost:4566
+
+aws lambda add-permission --function-name ProcessarNotasFiscais --statement-id apigateway-access-get --action "lambda:InvokeFunction" --principal apigateway.amazonaws.com --source-arn "arn:aws:execute-api:us-east-1:000000000000:ceq1hychea/*/GET/notas" --endpoint-url=http://localhost:4566
+
+aws apigateway create-deployment --rest-api-id ceq1hychea --stage-name dev --endpoint-url=http://localhost:4566
+
+
+Invoke-RestMethod -Uri "http://localhost:4566/restapis/ceq1hychea/dev/_user_request_/notas" -Method GET
